@@ -85,6 +85,42 @@ class SimulacionParticulasTest extends AnyFunSuite {
     assert(pasoParalelo(Array(p), 1.0, 0).length == 1)
   }
 
+  // Pruebas propias - Punto 1 -------------------------------------------------
+  test("1: mover admite un paso negativo y conserva los otros campos"){
+    val p = Particula(Vector2(5, -2), Vector2(-4, 6), 2.5)
+    assert(mover(p, -0.25) == p.copy(pos = Vector2(6, -3.5)))
+  }
+
+  test("1: un segmento interior usa indices relativos en la salida"){
+    val s = Array.tabulate(6)(i => Particula(Vector2(i, 0), Vector2(-2, i), i + 1))
+    val esperado = Array(s(2).copy(pos = Vector2(1, 1)), s(3).copy(pos = Vector2(2, 1.5)))
+    assert(pasoSegmento(s, 0.5, 2, 4).sameElements(esperado))
+  }
+
+  test("1: un reparto impar conserva cada elemento y su orden"){
+    val s = Array.tabulate(11)(i => Particula(Vector2(i, -i), Vector2(2, -1), i + 1))
+    val esperado = Array.tabulate(11)(i => s(i).copy(pos = Vector2(i + 1, -i - 0.5)))
+    assert(pasoParalelo(s, 0.5, 3).sameElements(esperado))
+  }
+
+  test("1: un umbral negativo termina y conserva todas las particulas"){
+    val s = Array.tabulate(5)(i => Particula(Vector2(3, i), Vector2(5, 2), 1))
+    val esperado = Array.tabulate(5)(i => s(i).copy(pos = Vector2(-2, i - 2)))
+    assert(pasoParalelo(s, -1, -6).sameElements(esperado))
+  }
+
+  test("1: el avance deja intacto el arreglo original y devuelve arreglos nuevos"){
+    val p = Particula(Vector2(-8, 3), Vector2(1, 4), 3)
+    val s = Array(p, p)
+    val a = pasoSecuencial(s, 2)
+    val b = pasoParalelo(s, 2, 2)
+    assert((s ne a) && (s ne b) && (a ne b))
+    assert(s.sameElements(Array(p, p)))
+    assert(b.sameElements(Array.fill(2)(p.copy(pos = Vector2(-6, 11)))))
+  }
+
+
+
   // Punto 2 -------------------------------------------------------------------
 
   test("energiaSecuencial: media masa por velocidad al cuadrado") {
