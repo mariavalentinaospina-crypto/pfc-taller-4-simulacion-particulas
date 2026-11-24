@@ -53,16 +53,20 @@ class SimulacionParticulas {
   // Punto 2: magnitudes globales ----------------------------------------------
 
   /** La suma de las energías cinéticas, media masa por velocidad al cuadrado. */
-  def energiaSecuencial(s: Sistema): Double = ???
+  def energiaSecuencial(s: Sistema): Double =
+    energiaParalela(s, s.length)
 
   /** La suma de las masas. */
-  def masaTotal(s: Sistema): Double = ???
+  def masaTotal(s: Sistema): Double =
+    s.foldLeft(0.0)((masa, p) => masa + p.masa)
 
   /**
    * La suma de las posiciones ponderadas por la masa, dividida entre la masa
    * total. Sin masa, el origen.
    */
-  def centroDeMasaSecuencial(s: Sistema): Vector2 = ???
+  def centroDeMasaSecuencial(s: Sistema): Vector2 = {
+    centroDeMasaParalelo(s, s.length)
+  }
 
   // Punto 3: las mismas magnitudes en paralelo --------------------------------
 
