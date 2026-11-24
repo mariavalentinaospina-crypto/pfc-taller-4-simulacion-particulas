@@ -18,33 +18,55 @@ class SimulacionParticulas {
   // Punto 1: un paso de la simulación -----------------------------------------
 
   /** La posición nueva es la anterior más la velocidad por dt. */
-  def mover(p: Particula, dt: Double): Particula = ???
+  def mover(p: Particula, dt: Double): Particula =
+    p.copy(pos = p.pos + p.vel * dt)
 
   /** Avanza todo el sistema un paso de tiempo dt. */
-  def pasoSecuencial(s: Sistema, dt: Double): Sistema = ???
+  def pasoSecuencial(s: Sistema, dt: Double): Sistema =
+    pasoSegmento(s, dt, 0, s.length)
 
   /** Avanza solo el tramo entre `desde` incluido y `hasta` excluido. */
-  def pasoSegmento(s: Sistema, dt: Double, desde: Int, hasta: Int): Sistema = ???
+  def pasoSegmento(s: Sistema, dt: Double, desde: Int, hasta: Int): Sistema =
+    Array.tabulate(hasta - desde)(i => mover(s(desde + i), dt))
 
   /**
    * Parte el sistema por la mitad con `parallel` mientras el tramo tenga más
    * elementos que el umbral, y por debajo de esa cifra resuelve en secuencial.
    */
-  def pasoParalelo(s: Sistema, dt: Double, umbral: Int): Sistema = ???
+  def pasoParalelo(s: Sistema, dt: Double, umbral: Int): Sistema = {
+    val limite = math.max(1, umbral)
+
+    def avanzar(desde: Int, hasta: Int): Sistema = {
+      val longitud = hasta - desde
+      if (longitud <= limite) pasoSegmento(s, dt, desde, hasta)
+      else{
+        val mitad = desde + longitud / 2
+        val (izquierda, derecha) = parallel(avanzar(desde, mitad), avanzar(mitad, hasta))
+        Array.concat(izquierda, derecha)
+      }
+    }
+    if(s.length <= limite) pasoSecuencial(s, dt)
+    else avanzar(0, s.length)
+
+  }
 
   // Punto 2: magnitudes globales ----------------------------------------------
 
   /** La suma de las energías cinéticas, media masa por velocidad al cuadrado. */
-  def energiaSecuencial(s: Sistema): Double = ???
+  def energiaSecuencial(s: Sistema): Double =
+    energiaParalela(s, s.length)
 
   /** La suma de las masas. */
-  def masaTotal(s: Sistema): Double = ???
+  def masaTotal(s: Sistema): Double =
+    s.foldLeft(0.0)((masa, p) => masa + p.masa)
 
   /**
    * La suma de las posiciones ponderadas por la masa, dividida entre la masa
    * total. Sin masa, el origen.
    */
-  def centroDeMasaSecuencial(s: Sistema): Vector2 = ???
+  def centroDeMasaSecuencial(s: Sistema): Vector2 = {
+    centroDeMasaParalelo(s, s.length)
+  }
 
   // Punto 3: las mismas magnitudes en paralelo --------------------------------
 
