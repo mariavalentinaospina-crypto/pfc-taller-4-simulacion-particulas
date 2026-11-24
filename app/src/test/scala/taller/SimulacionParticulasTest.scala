@@ -19,6 +19,7 @@ class SimulacionParticulasTest extends AnyFunSuite {
   val eps = 1e-9
 
   val p = Particula(Vector2(0, 0), Vector2(1, 2), 1.0)
+  val reposo = Vector2(0, 0)
 
   val s: Sistema = Array(
     Particula(Vector2(0, 0), Vector2(3, 4), 2.0), // norma 5
@@ -157,6 +158,36 @@ class SimulacionParticulasTest extends AnyFunSuite {
       Particula(Vector2(4, 0), Vector2(0, 0), 1.0))
     assert(cerca(centroDeMasaSecuencial(pesado), Vector2(1.0, 0.0)))
   }
+
+  // Pruebas propias - Punto 2 -------------------------------------------------
+  test("2: la energia suma aportes de velocidades con signos distintos") {
+    val s = Array(Particula(reposo, Vector2(-2, 1), 3), Particula(reposo, Vector2(3, -3), 0.5))
+    assert(cerca(energiaSecuencial(s), 12))
+  }
+
+  test("2: una particula sin masa no aporta energia ni desplaza el centro"){
+    val s = Array(Particula(Vector2(55, -90), Vector2(20, 30), 0),
+      Particula(Vector2(-2, 7), reposo, 0.75))
+    assert(cerca(energiaSecuencial(s), 0))
+    assert(cerca(centroDeMasaSecuencial(s), Vector2(-2, 7)))
+  }
+
+  test("2: la masa total conserva las fracciones"){
+    val s = Array(0.125, 3.5, 0.75, 0.0).map(m => Particula(reposo, reposo, m))
+    assert(cerca(masaTotal(s), 4.375))
+  }
+
+  test("2: el centro pondera las dos coordenadas de tres posiciones"){
+    val s = Array(Particula(Vector2(-4, 6), reposo, 1),
+      Particula(Vector2(5, -3), reposo, 2), Particula(Vector2(1, 8), reposo, 3))
+    assert(cerca(centroDeMasaSecuencial(s), Vector2(1.5, 4)))
+  }
+
+  test("2: un sistema no vacio de masa cero tiene centro en el origen"){
+    val s = Array(Particula(Vector2(-8, 2), reposo, 0), Particula(Vector2(5, 4), reposo, 0))
+    assert(cerca(centroDeMasaSecuencial(s), reposo))
+  }
+  
 
   // Punto 3 -------------------------------------------------------------------
 
