@@ -257,21 +257,29 @@ class SimulacionParticulasTest extends AnyFunSuite {
   }
 
   // Punto 5 -------------------------------------------------------------------
-
-  test("aceleracion: cuatro veces más rápido da 4.0") {
-    assert(cerca(aceleracion(100.0, 25.0), 4.0))
+test("5: una paralelizacion mas lenta produce una aceleracion menor que uno") {
+    assert(cerca(aceleracion(7.5, 12.0), 0.625))
   }
 
-  test("aceleracion: el mismo tiempo da 1.0") {
-    assert(cerca(aceleracion(100.0, 100.0), 1.0))
+  test("5: cocientes con escalas equivalentes conservan la aceleracion") {
+    assert(cerca(aceleracion(1.3, 0.4), aceleracion(1300, 400)))
   }
 
-  test("umbralConveniente: sin candidatos devuelve el tamaño del sistema") {
-    assert(umbralConveniente(grande, 0.5, Nil) == grande.length)
+  test("5: el unico candidato se devuelve aunque sea mayor que el sistema") {
+    val s = Array(Particula(reposo, Vector2(2, -3), 2))
+    assert(umbralConveniente(s, 0.125, List(13)) == 13)
   }
 
-  test("umbralConveniente: devuelve uno de los candidatos") {
-    val candidatos = List(16, 128, 1024)
-    assert(candidatos.contains(umbralConveniente(grande, 0.5, candidatos)))
+  test("5: los candidatos no se sustituyen por su umbral normalizado") {
+    val s = Array.tabulate(3)(i => Particula(reposo, Vector2(i, -i), 2))
+    assert(umbralConveniente(s, -0.25, List(-11, -7)) < 0)
+  }
+
+  test("5: buscar el umbral deja el sistema original disponible para otro paso") {
+    val p = Particula(Vector2(7, -6), Vector2(-3, 2), 4)
+    val s = Array(p, p)
+    val umbral = umbralConveniente(s, 0.5, List(1, 2))
+    assert(s.sameElements(Array(p, p)))
+    assert(pasoParalelo(s, 0.5, umbral).sameElements(Array.fill(2)(p.copy(pos = Vector2(5.5, -5)))))
   }
 }
