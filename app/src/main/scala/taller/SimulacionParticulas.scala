@@ -92,7 +92,13 @@ class SimulacionParticulas {
 
   // Punto 5: medir la aceleración ---------------------------------------------
 
-  /** Mediana de varias mediciones de ScalaMeter, en milisegundos. */
+/** Mediana de varias mediciones de ScalaMeter, en milisegundos. */
+/** se hace por parte john freddy, sirve para la medicion de tiempo de ejecución de un bloque de código, repitiendo el bloque varias veces y tomando la mediana de los tiempos medidos. Esto ayuda a obtener una estimación más precisa del tiempo de ejecución, minimizando el impacto de variaciones aleatorias en la medición.
+  * 
+  *
+  * @param repeticiones
+  * @param cuerpo
+  */
   def medir[A](repeticiones: Int)(cuerpo: => A): Double = {
     val muestras = Vector.fill(repeticiones) {
       (withWarmer(new Warmer.Default) measure { cuerpo }).value
@@ -100,12 +106,10 @@ class SimulacionParticulas {
     muestras.sorted.apply(muestras.length / 2)
   }
 
-  /** El cociente entre el tiempo secuencial y el paralelo. */
-  def aceleracion(tSecuencial: Double, tParalelo: Double): Double = ???
+  def aceleracion(tSecuencial: Double, tParalelo: Double): Double =
+    tSecuencial / tParalelo
 
-  /**
-   * El umbral que menos tarda de una lista de candidatos. Con la lista vacía,
-   * el tamaño del sistema, que equivale a no repartir.
-   */
-  def umbralConveniente(s: Sistema, dt: Double, umbrales: List[Int]): Int = ???
+  def umbralConveniente(s: Sistema, dt: Double, umbrales: List[Int]): Int =
+    if (umbrales.isEmpty) s.length
+    else umbrales.minBy(umbral => medir(3)(pasoParalelo(s, dt, umbral)))
 }

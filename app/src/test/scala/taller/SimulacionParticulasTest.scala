@@ -256,7 +256,7 @@ class SimulacionParticulasTest extends AnyFunSuite {
     assert(casos.forall { case (n, u) => profundidad(n, u) <= trabajo(n) })
   }
 
-  // Punto 5 -------------------------------------------------------------------
+  // Pruebas propias-Punto 5 -------------------------------------------------------------------
 test("5: una paralelizacion mas lenta produce una aceleracion menor que uno") {
     assert(cerca(aceleracion(7.5, 12.0), 0.625))
   }
