@@ -282,4 +282,156 @@ test("5: una paralelizacion mas lenta produce una aceleracion menor que uno") {
     assert(s.sameElements(Array(p, p)))
     assert(pasoParalelo(s, 0.5, umbral).sameElements(Array.fill(2)(p.copy(pos = Vector2(5.5, -5)))))
   }
+
+  private val reposo = Vector2(0, 0)
+
+  private def cercaPropia(a: Double, b: Double): Boolean = math.abs(a - b) <= 1e-9
+
+  private def cercaPropia(a: Vector2, b: Vector2): Boolean = cercaPropia(a.x, b.x) && cercaPropia(a.y, b.y)
+
+  // Punto 1 : Propias -----------------------
+
+  test("1: mover admite un paso negativo y conserva los otros campos") {
+    val p = Particula(Vector2(5, -2), Vector2(-4, 6), 2.5)
+    assert(mover(p, -0.25) == p.copy(pos = Vector2(6, -3.5)))
+  }
+
+  test("1: un segmento interior usa indices relativos en la salida") {
+    val s = Array.tabulate(6)(i => Particula(Vector2(i, 0), Vector2(-2, i), i + 1))
+    val esperado = Array(s(2).copy(pos = Vector2(1, 1)), s(3).copy(pos = Vector2(2, 1.5)))
+    assert(pasoSegmento(s, 0.5, 2, 4).sameElements(esperado))
+  }
+
+  test("1: un reparto impar conserva cada elemento y su orden") {
+    val s = Array.tabulate(11)(i => Particula(Vector2(i, -i), Vector2(2, -1), i + 1))
+    val esperado = Array.tabulate(11)(i => s(i).copy(pos = Vector2(i + 1, -i - 0.5)))
+    assert(pasoParalelo(s, 0.5, 3).sameElements(esperado))
+  }
+
+  test("1: un umbral negativo termina y conserva todas las particulas") {
+    val s = Array.tabulate(5)(i => Particula(Vector2(3, i), Vector2(5, 2), 1))
+    val esperado = Array.tabulate(5)(i => s(i).copy(pos = Vector2(-2, i - 2)))
+    assert(pasoParalelo(s, -1, -6).sameElements(esperado))
+  }
+
+  test("1: el avance deja intacto el arreglo original y devuelve arreglos nuevos") {
+    val p = Particula(Vector2(-8, 3), Vector2(1, 4), 3)
+    val s = Array(p, p)
+    val a = pasoSecuencial(s, 2)
+    val b = pasoParalelo(s, 2, 2)
+    assert((s ne a) && (s ne b) && (a ne b))
+    assert(s.sameElements(Array(p, p)))
+    assert(b.sameElements(Array.fill(2)(p.copy(pos = Vector2(-6, 11)))))
+  }
+
+  // Punto 2 : Propias -----------------------
+
+  test("2: la energia suma aportes de velocidades con signos distintos") {
+    val s = Array(Particula(reposo, Vector2(-2, 1), 3), Particula(reposo, Vector2(3, -3), 0.5))
+    assert(cercaPropia(energiaSecuencial(s), 12))
+  }
+
+  test("2: una particula sin masa no aporta energia ni desplaza el centro") {
+    val s = Array(Particula(Vector2(55, -90), Vector2(20, 30), 0),
+      Particula(Vector2(-2, 7), reposo, 0.75))
+    assert(cercaPropia(energiaSecuencial(s), 0))
+    assert(cercaPropia(centroDeMasaSecuencial(s), Vector2(-2, 7)))
+  }
+
+  test("2: la masa total conserva las fracciones") {
+    val s = Array(0.125, 3.5, 0.75, 0.0).map(m => Particula(reposo, reposo, m))
+    assert(cercaPropia(masaTotal(s), 4.375))
+  }
+
+  test("2: el centro pondera las dos coordenadas de tres posiciones") {
+    val s = Array(Particula(Vector2(-4, 6), reposo, 1),
+      Particula(Vector2(5, -3), reposo, 2), Particula(Vector2(1, 8), reposo, 3))
+    assert(cercaPropia(centroDeMasaSecuencial(s), Vector2(1.5, 4)))
+  }
+
+  test("2: un sistema no vacio de masa cero tiene centro en el origen") {
+    val s = Array(Particula(Vector2(-8, 2), reposo, 0), Particula(Vector2(5, 4), reposo, 0))
+    assert(cercaPropia(centroDeMasaSecuencial(s), reposo))
+  }
+
+  // Punto 3 : Propias -----------------------
+
+  test("3: la energia de cinco particulas suma ambas ramas del reparto") {
+    val s = Array.tabulate(5)(i => Particula(reposo, Vector2(-i, 2), 2))
+    assert(cercaPropia(energiaParalela(s, 2), 50))
+  }
+
+  test("3: la energia conserva aportes fraccionarios con un umbral negativo") {
+    val s = Array.tabulate(3)(i => Particula(Vector2(i, 3), Vector2(-1, 2), 0.25 + i))
+    assert(cercaPropia(energiaParalela(s, -3), 9.375))
+  }
+
+  test("3: el centro paralelo conserva el peso diferente de dos mitades iguales") {
+    val s = Array(Particula(Vector2(-8, 6), reposo, 1), Particula(Vector2(4, -2), reposo, 5))
+    assert(cercaPropia(centroDeMasaParalelo(s, 1), Vector2(2, -2.0 / 3)))
+  }
+
+  test("3: una rama de masa cero no arrastra el centro de la otra") {
+    val s = Array(Particula(Vector2(50, -50), reposo, 0), Particula(Vector2(-6, 2), reposo, 4))
+    assert(cercaPropia(centroDeMasaParalelo(s, 1), Vector2(-6, 2)))
+  }
+
+  test("3: las reducciones paralelas toleran diferentes agrupaciones de decimales") {
+    val s = Array.tabulate(101)(i => Particula(Vector2(i / 10.0, -i / 7.0),
+      Vector2(i / 13.0, -i / 101.0), (i + 1) / 101.0))
+    assert(List(0, 9, 18, 101).forall { u =>
+      cercaPropia(energiaParalela(s, u), energiaSecuencial(s)) &&
+        cercaPropia(centroDeMasaParalelo(s, u), centroDeMasaSecuencial(s))
+    })
+  }
+
+  // Punto 4 : Propias -----------------------
+
+  test("4: un sistema vacio tiene trabajo y profundidad cero") {
+    assert(trabajo(0) == 0 && profundidad(0, -4) == 0)
+  }
+
+  test("4: la ruta critica puede terminar antes que la rama mas dividida") {
+    assert(profundidad(11, 5) == 6)
+  }
+
+  test("4: con umbral negativo la profundidad cuenta hasta hojas unitarias") {
+    assert(profundidad(17, -3) == 6)
+  }
+
+  test("4: la estimacion conserva el cociente fraccionario") {
+    assert(cercaPropia(tiempoEstimado(11, 4, 3), 7.75))
+  }
+
+  test("4: dividir la rama mas grande evita desbordar con n maximo") {
+    assert(profundidad(Int.MaxValue, 1) == 32)
+  }
+
+  // Punto 5 : Propias -----------------------
+
+  test("5: una paralelizacion mas lenta produce una aceleracion menor que uno") {
+    assert(cercaPropia(aceleracion(7.5, 12.0), 0.625))
+  }
+
+  test("5: cocientes con escalas equivalentes conservan la aceleracion") {
+    assert(cercaPropia(aceleracion(1.3, 0.4), aceleracion(1300, 400)))
+  }
+
+  test("5: el unico candidato se devuelve aunque sea mayor que el sistema") {
+    val s = Array(Particula(reposo, Vector2(2, -3), 2))
+    assert(umbralConveniente(s, 0.125, List(13)) == 13)
+  }
+
+  test("5: los candidatos no se sustituyen por su umbral normalizado") {
+    val s = Array.tabulate(3)(i => Particula(reposo, Vector2(i, -i), 2))
+    assert(umbralConveniente(s, -0.25, List(-11, -7)) < 0)
+  }
+
+  test("5: buscar el umbral deja el sistema original disponible para otro paso") {
+    val p = Particula(Vector2(7, -6), Vector2(-3, 2), 4)
+    val s = Array(p, p)
+    val umbral = umbralConveniente(s, 0.5, List(1, 2))
+    assert(s.sameElements(Array(p, p)))
+    assert(pasoParalelo(s, 0.5, umbral).sameElements(Array.fill(2)(p.copy(pos = Vector2(5.5, -5)))))
+  }
 }

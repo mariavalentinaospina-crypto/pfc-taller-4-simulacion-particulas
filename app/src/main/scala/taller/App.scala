@@ -44,7 +44,7 @@ object App {
 
       umbrales.foreach { umbral =>
         val paralelo = if (umbral == n) sinReparto
-        else medir(repeticiones)(pasoParalelo(sistema, dt, umbral))
+          else medir(repeticiones)(pasoParalelo(sistema, dt, umbral))
         val aceleracionMedida = aceleracion(secuencial, paralelo)
         val estimado = tiempoEstimado(n, procesadores, umbral)
         val fila = s"| $n | $umbral | %.3f | %.3f | " +
