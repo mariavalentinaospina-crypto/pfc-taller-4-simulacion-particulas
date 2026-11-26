@@ -1,279 +1,58 @@
-# Ejemplo de informe de corrección
+# Informe de corrección
 
-Fundamentos de Programación Funcional y Concurrente.
-Documento realizado por el docente Juan Francisco Díaz.
+## Avance de partículas
 
-## 1. Argumentar la corrección de programas recursivos
+Para una partícula $p=(r,v,m)$, `mover` construye $f(p)=(r+dt\,v,v,m)$. La copia conserva $v$ y $m$. Para $0\le a\le b\le n$, `pasoSegmento` construye una salida de longitud $b-a$ y su celda $j$ contiene $f(s_{a+j})$. En particular, `pasoSecuencial` obtiene $f(s_i)$ para cada índice $i$ de $[0,n)$.
 
-Sea $f : A \to B$ una función, y $A$ un conjunto definido recursivamente
-(recordar la definición de Matemáticas Discretas I), como por ejemplo los
-naturales o las listas.
-
-Sea $P_f$ un programa recursivo (lineal o en árbol) desarrollado en Scala (o en
-cualquier lenguaje de programación) hecho para calcular $f$:
-
-```scala
-def Pf(a: A): B = { // Pf recibe a de tipo A, y devuelve f(a) de tipo B
-  ...
-}
-```
-
-¿Cómo argumentar que $P_f(a)$ siempre devuelve $f(a)$ como respuesta? Es decir,
-¿cómo argumentar que $P_f$ es correcto con respecto a su especificación?
-
-La respuesta es sencilla: demostrando el siguiente teorema.
+Sea $u=\max(1,\text{umbral})$. Probamos por inducción en $b-a$ que la llamada paralela produce el mismo tramo. Si $b-a\le u$, llama a `pasoSegmento` (la llamada inicial puede pasar por `pasoSecuencial`). Si $b-a>u$, el corte $c=a+\lfloor(b-a)/2\rfloor$ cumple $a\lt c\lt b$. Los dos tramos son más cortos y valen las hipótesis de inducción. Además,
 
 ```math
-\forall a \in A : P_f(a) == f(a)
+[a,c)\cap[c,b)=\varnothing,\qquad [a,c)\cup[c,b)=[a,b).
 ```
 
-Cuando uno tiene que demostrar que algo se cumple para todos los elementos de
-un conjunto definido recursivamente, es natural usar inducción estructural. En
-términos prácticos, esto significa demostrar que:
+La concatenación de ambas salidas en orden conserva todos los índices, una sola vez, y vale para cualquier agrupación porque $(X\mathbin{++}Y)\mathbin{++}Z=X\mathbin{++}(Y\mathbin{++}Z)$. El arreglo vacío es la identidad de la concatenación. Los casos base cubren también los umbrales no positivos gracias al límite efectivo.
 
-- Para cada valor básico $a$ de $A$, se tiene que $P_f(a) == f(a)$.
-- Para cada valor $a \in A$ construido recursivamente a partir de otro(s)
-  valor(es) $a' \in A$, se tiene que
-  $P_f(a') == f(a') \rightarrow P_f(a) == f(a)$. (Esta es la hipótesis de
-  inducción).
+## Magnitudes del sistema
 
-### Ejemplo: factorial recursivo
-
-Sea $f : \mathbb{N} \to \mathbb{N}$ la función que calcula el factorial de un
-número natural, es decir, $f(n) = n!$. Y sea $P_f$ el siguiente programa en
-Scala:
-
-```scala
-def Pf(n: Int): Int = { // Pf recibe n de tipo Int, y devuelve n! de tipo Int
-  if (n == 0) 1 else n * Pf(n - 1)
-}
-```
-
-Vamos a demostrar que $\forall n \in \mathbb{N} : P_f(n) == n!$
-
-**Caso base:** $n = 0$
+`masaTotal` comienza con cero y suma $m_i$ en cada paso. Tras procesar $k$ partículas tiene $\sum_{i=0}^{k-1}m_i$. En una hoja $[a,b)$, al entrar a `sumar` con índice $i$, cada acumulador contiene la suma de los aportes de $[a,i)$. El caso $i=a$ cumple el invariante por ser una suma vacía. El paso recursivo agrega el aporte del índice $i$ y avanza a $i+1$. Al alcanzar $i=b$, el acumulador cubre exactamente la hoja. Los aportes son
 
 ```math
-P_f(0) \rightarrow \text{if } (0 == 0)\ 1 \text{ else } 0 \ast P_f(-1) \rightarrow 1
+e_i=\frac{1}{2}m_i(v_{x,i}^2+v_{y,i}^2),\qquad Q_i=(m_i r_i,m_i).
 ```
 
-Por otro lado, $f(0) = 0! = 1$. Entonces $P_f(0) == f(0)$.
+Por inducción sobre las divisiones, cada rama de energía devuelve $\sum_{i=a}^{b-1}e_i$ y cada rama de centro de masa devuelve $\sum_{i=a}^{b-1}Q_i$. En la hoja esto se obtiene por el invariante. Para una partición se suman los dos resultados sobre intervalos disjuntos. La suma escalar y la suma componente a componente $(w_1,M_1)\oplus(w_2,M_2)=(w_1+w_2,M_1+M_2)$ son asociativas sobre los reales y tienen identidad cero. El recorrido secuencial ejecuta la misma reducción sobre el tramo completo.
 
-**Caso de inducción:** $n = k + 1$, $k \geq 0$. Hay que demostrar:
-$P_f(k) == f(k) \rightarrow P_f(k + 1) == f(k + 1)$
+El centro es $w/M$ si $M\ne0$ y el origen en caso contrario. Por ejemplo, dos mitades con centros en $x=0$ y $x=8$ y masas $1$ y $3$ tienen centro en $x=6$. Promediar sus centros daría $4$. La masa de cada rama se conserva junto al momento hasta la división final.
+
+El promedio binario $A(x,y)=(x+y)/2$ tampoco es asociativo. Con $0$, $4$
+y $8$, se obtiene $A(A(0,4),8)=5$ y $A(0,A(4,8))=3$. Conservar la suma
+ponderada y la masa permite agrupar los tramos de cualquier forma.
+
+En `Double`, los redondeos de las sumas dependen del orden de acumulación. Las pruebas de estas magnitudes comparan con tolerancia.
+
+## Trabajo y profundidad
+
+Cada índice requiere un movimiento, así que el trabajo del modelo es $W(n)=n$. Una hoja de longitud $k$ en el nivel $d$ aporta $d+k$ a la profundidad. Por tanto,
 
 ```math
-P_f(k+1) \rightarrow \text{if } (k+1 == 0)\ 1 \text{ else } (k+1) \ast P_f(k) \rightarrow (k+1) \ast P_f(k)
+D(n,u)=
+\begin{cases}
+n & n\le u,\\
+1+\max\{D(\lfloor n/2\rfloor,u),D(\lceil n/2\rceil,u)\} & n>u.
+\end{cases}
 ```
 
-Usando la hipótesis de inducción (HI):
+Mientras todos los tramos de un nivel se dividen, sus longitudes difieren a lo sumo en uno. `profundidad` conserva los extremos de esas longitudes y el nivel. Al dividir todos los tramos, el nuevo mínimo es el piso de la mitad del anterior y el nuevo máximo es el techo de la mitad del anterior. Si todos son hojas, gana la longitud máxima. Si hay hojas y tramos por dividir en el mismo nivel, sus tamaños son $u$ y $u+1$. Basta comparar $d+u$ con $d+1+\lceil(u+1)/2\rceil$, porque todos los hijos ya son hojas. El cálculo visita a lo sumo un estado por nivel. Para $p>0$, `tiempoEstimado` usa $D+W/p$ con división real.
 
-```math
-\rightarrow (k+1) \ast k! = (k+1)!
-```
+## Aceleración y selección
 
-Por lo tanto, $P_f(k + 1) == f(k + 1)$.
+Para tiempos positivos, $S=T_{\rm sec}/T_{\rm par}$. El resultado es $1$ si ambos tiempos coinciden. `umbralConveniente` aplica `minBy` a las medianas medidas y, para una lista no vacía, devuelve un candidato que alcanza el mínimo observado. El caso vacío devuelve $n$, que deja el sistema en un único tramo. Como las medianas dependen de la ejecución, las pruebas no exigen que gane un umbral fijo.
 
-Concluimos por inducción que $\forall n \in \mathbb{N} : P_f(n) == n!$
+## Verificación con pruebas
 
-### Ejemplo: el máximo de una lista
-
-Sea $f : \text{List}[\mathbb{N}] \to \mathbb{N}$ la función que calcula el
-máximo de una lista de enteros positivos, no vacía. Y sea $P_f$ el siguiente
-programa en Scala:
-
-```scala
-def maxLin(l: List[Int]): Int = {
-  if (l.tail.isEmpty) l.head
-  else math.max(maxLin(l.tail), l.head)
-}
-```
-
-Demostraremos que:
-
-```math
-\forall n \in \mathbb{N} \setminus \{0\} : P_f(\text{List}(a_1, a_2, \ldots, a_n)) == f(\text{List}(a_1, a_2, \ldots, a_n))
-```
-
-**Caso base:** $n = 1$
-
-```math
-P_f(\text{List}(a_1)) \rightarrow \text{if } \text{List}(a_1).\text{tail.isEmpty then } \text{List}(a_1).\text{head else } \ldots \rightarrow \text{List}(a_1).\text{head} \rightarrow a_1
-```
-
-Por otro lado, $f(\text{List}(a_1)) = a_1$. Entonces
-$P_f(\text{List}(a_1)) == f(\text{List}(a_1))$.
-
-**Caso de inducción:** $n = k + 1$, $k \geq 1$. Se debe demostrar:
-
-```math
-P_f(\text{List}(b_1, b_2, \ldots, b_k)) == f(\text{List}(b_1, b_2, \ldots, b_k)) \rightarrow P_f(\text{List}(a_1, a_2, \ldots, a_{k+1})) == f(\text{List}(a_1, a_2, \ldots, a_{k+1}))
-```
-
-Empecemos por calcular qué devuelve $P_f$ usando el modelo de sustitución:
-
-```math
-P_f(L) \rightarrow \text{if } L.\text{tail.isEmpty then } L.\text{head else math.max}(P_f(L.\text{tail}), L.\text{head})
-```
-
-```math
-\rightarrow \text{math.max}(P_f(\text{List}(a_2, \ldots, a_{k+1})), a_1)
-```
-
-Sea $b = P_f(\text{List}(a_2, \ldots, a_{k+1}))$; por la hipótesis de
-inducción, $b = f(\text{List}(a_2, \ldots, a_{k+1}))$. Hay dos posibilidades:
-
-- Si $\text{math.max}(b, a_1) = b$, entonces $b \geq a_1$ y
- $b == f(\text{List}(a_1, a_2, \ldots, a_{k+1}))$.
-- Si $\text{math.max}(b, a_1) = a_1$, entonces $a_1 \geq b$ y
- $a_1 == f(\text{List}(a_1, a_2, \ldots, a_{k+1}))$.
-
-Por lo tanto, $P_f(L) == f(L)$.
-
-Concluimos por inducción que:
-
-```math
-\forall n \in \mathbb{N} \setminus \{0\} : P_f(\text{List}(a_1, a_2, \ldots, a_n)) == f(\text{List}(a_1, a_2, \ldots, a_n))
-```
-
-## 2. Argumentar la corrección de programas iterativos
-
-Para argumentar la corrección de programas iterativos, se debe formalizar cómo
-es la iteración. Esto implica definir:
-
-- Cómo se representa un estado de la iteración, $s$.
-- Cuál es el estado inicial, $s_0$.
-- Cuál es el estado final (o cómo se reconoce que un estado es final): $s_f$.
-- Qué condición (o predicado) cumple todo estado: $\text{Inv}(s)$ (invariante
-  de la iteración).
-- El mecanismo para pasar de un estado al siguiente: $\text{transformar}(s)$.
-  Si $s_i$ es el estado $i$, entonces $\text{transformar}(s_i) = s_{i+1}$.
-
-Un programa iterativo tiene la siguiente forma:
-
-```scala
-def Pf(a: A): B = { // Pf recibe a de tipo A, y devuelve f(a) de tipo B
-  def Pf_iter(s: Estado): B =
-    if (esFinal(s)) respuesta(s) else Pf_iter(transformar(s))
-  Pf_iter(s0)
-}
-```
-
-Demostración de corrección:
-
-- $\text{Inv}(s_0)$: el estado inicial cumple la condición invariante.
-- Si $(s_i \neq s_f \land \text{Inv}(s_i)) \rightarrow \text{Inv}(\text{transformar}(s_i))$:
-  el nuevo estado cumple la condición invariante si el estado anterior la
-  cumplía.
-- De lo anterior se concluye $\text{Inv}(s_f)$, es decir, el estado final
-  cumple la condición invariante. Luego,
-  $\text{Inv}(s_f) \rightarrow \text{respuesta}(s_f) == f(a)$.
-- Finalmente, demostrar que siempre se llega al estado final $s_f$. Esto
-  implica que
-  $P_f(a) == \text{iter}(s_0) == \text{respuesta}(s_f) == f(a)$.
-
-### Ejemplo: factorial iterativo
-
-Considere el siguiente programa iterativo en Scala para calcular la función
-factorial:
-
-```scala
-def Pf(n: Int): Int = { // Pf recibe n de tipo Int, y devuelve n! de tipo Int
-  def Pf_iter(i: Int, n: Int, ac: Int): Int =
-    if (i > n) ac else Pf_iter(i + 1, n, i * ac)
-  Pf_iter(1, n, 1)
-}
-```
-
-Este programa implementa el siguiente proceso iterativo:
-
-- Un estado $s = (i, n, ac)$.
-- El estado inicial es $s_0 = (1, n, 1)$.
-- $(i, n, ac)$ es final si $i > n$, o lo que es lo mismo, si $i = n + 1$.
-- La invariante de ciclo es
-  $\text{Inv}(i, n, ac) \equiv i \leq n + 1 \land ac = (i-1)!$.
-  La invariante de ciclo es una relación que SIEMPRE se cumple en el ciclo.
-- $\text{transformar}((i, n, ac)) = (i+1, n, i \ast ac)$.
-
-Ahora, demostramos los puntos mencionados:
-
-**1.** $\text{Inv}(s_0)$: el estado inicial cumple la condición invariante.
-
-```math
-s_0 = (1, n, 1) \implies 1 \leq n + 1 \land 1 = 0!
-```
-
-**2.** La invariante se mantiene con la transformación de estados,
-$(s_i \neq s_f \land \text{Inv}(s_i)) \rightarrow \text{Inv}(\text{transformar}(s_i))$:
-
-1. Primer cambio, $i = i + 1$, lo que implica $ac = ((i+1) - 1)! = i!$.
-2. Segundo cambio, $ac = i \ast ac$, entonces $ac = (i - 1)! \ast i = i!$.
-3. Como se puede ver en ambos cambios indicados en la transformación, la
-   invariante se mantiene.
-
-**3.** $\text{Inv}(s_f) \rightarrow \text{respuesta}(s_f) == f(a)$
-
-```math
-(n + 1 \leq n + 1) \land ac = ((n+1)-1)! \rightarrow ac == n!
-```
-
-**4.** En cada paso, la componente $i$ del estado incrementa, acercándose a $n+1$.
-Después de $n$ iteraciones, se alcanza $n+1$.
-
-Esto implica que $P_f(n) == \text{iter}(1, n, 1) == n!$
-
-### Ejemplo: el máximo de una lista
-
-Se desea calcular el máximo de una lista de enteros positivos, no vacía. Sea
-$f : \text{List}[\mathbb{N}] \to \mathbb{N}$ la función que calcula ese valor.
-Y sea $P_f$ el siguiente programa en Scala:
-
-```scala
-def maxIt(l: List[Int]): Int = {
-  def maxAux(max: Int, l: List[Int]): Int = {
-    if (l.isEmpty) max
-    else maxAux(math.max(max, l.head), l.tail)
-  }
-  maxAux(l.head, l.tail)
-}
-```
-
-Este programa implementa el siguiente proceso iterativo:
-
-- Un estado $s = (max, l)$ donde $l = \text{List}(a_i, a_{i+1}, \ldots, a_k)$
-  es una cola de $L$.
-- El estado inicial es
-  $s_0 = (L.\text{head}, L.\text{tail}) = (a_1, \text{List}(a_2, \ldots, a_k))$.
-- $s = (max, l)$ es final si $l$ es vacía.
-- $\text{Inv}(max, l) \equiv l = \text{List}(a_i, a_{i+1}, \ldots, a_k) \land max = f(\text{List}(a_1, a_2, \ldots, a_{i-1}))$.
-- $\text{transformar}((max, l)) = (nmax, l.\text{tail})$ donde $nmax = max$ si
-  $max \geq l.\text{head}$, y $nmax = l.\text{head}$ si no.
-
-Demostración de los puntos:
-
-**1.** $\text{Inv}(s_0)$: el estado inicial cumple la condición invariante.
-
-```math
-s_0 = (a_1, \text{List}(a_2, \ldots, a_k)) \implies a_1 = f(\text{List}(a_1))
-```
-
-**2.** $(s_i \neq s_f \land \text{Inv}(s_i)) \rightarrow \text{Inv}(\text{transformar}(s_i))$
-
-```math
-\neg\, l.\text{isEmpty} \land l = \text{List}(a_i, a_{i+1}, \ldots, a_k) \land max = f(\text{List}(a_1, a_2, \ldots, a_{i-1}))
-```
-
-```math
-\rightarrow l.\text{tail} = \text{List}(a_{i+1}, \ldots, a_k) \land nmax = f(\text{List}(a_1, \ldots, a_i))
-```
-
-**3.** $\text{Inv}(s_f) \rightarrow \text{respuesta}(s_f) == f(a)$
-
-```math
-\text{Inv}((max, \text{List}())) \rightarrow max = f(\text{List}(a_1, \ldots, a_k))
-```
-
-**4.** En cada paso, la lista $l$ se reduce, acercándose a ser vacía. Después de
-$k$ iteraciones, $l = \text{List}()$.
-
-Esto implica que $P_f(L) == \text{maxAux}(L.\text{head}, L.\text{tail}) == f(L)$
+La suite reúne 36 pruebas del taller y 25 casos propios, cinco por punto.
+Los casos propios comprueban, entre otros, el orden del avance con una
+longitud impar, el centro de masa con mitades de distinto peso, el coste
+de una rama que termina antes y el cociente fraccionario de la estimación.
+También comprueban que buscar un umbral conserva el sistema de entrada.
+Gradle ejecutó los 61 casos sin fallos.
